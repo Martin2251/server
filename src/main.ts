@@ -2,6 +2,7 @@ import dotenv from "dotenv"
 import fastify from "fastify";
 import fastifyCors  from "@fastify/cors";
 import fastifyIO from "fastify-socket.io";
+import Redis from "ioredis"
 
 dotenv.config();
 
@@ -10,10 +11,18 @@ const HOST = process.env.HOST || "0.0.0.0";
 const CORS_ORIGIN = process.env.CORS_ORIGIN||"http://localhost:3000";
 const UPSTASH_REDIS_REST_URL = process.env.UPSTASH_REDIS_REST_URL
 
+const CONNECTION_COUNT_CHANNEL = "chat-connection-count"
+
+
+
 if (!UPSTASH_REDIS_REST_URL){
     console.error("missing UPSTASH_REDIS_REST_URL")
     process.exit(1)
 }
+
+//instance of redis
+const publisher = new Redis(UPSTASH_REDIS_REST_URL)
+const subscriber = new Redis(UPSTASH_REDIS_REST_URL)
 // create an instance of fastify
 
 async function buildServer(){
@@ -27,6 +36,14 @@ await app.register(fastifyCors,{
 });
 
 await app.register(fastifyIO)
+
+app.io.on('connection', (io) =>{
+    console.log('Client connected')
+
+    io.on(`disconnect`, () =>{
+        console.log('client disconnected');
+    })
+})
 
 
 //healtcheck
